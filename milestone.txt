@@ -1,0 +1,20 @@
+### Milestone 1: Core Functionality
+- Build UI (landing page, search tab, popular songs)  
+- Integrate Spotify API to find similar songs  
+- Display tempo, key, danceability  
+- Add basic filters (genre, decade, energy)  
+
+
+We are a little behind on milestone one. 
+We have set up most of the user interface: 
+ 1) Landing Page
+ 2) Search
+ 3) Results taab
+
+We haven't been able to incorporate the Spotify API yet.
+So far, the songs that show up on our app are hard-coded values. 
+
+Our next step is to integrate this API and add filters to sort songs. 
+This will go with our goals for the next milestone: 
+ 1) Song detail cards
+ 2) Links to songs
