@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../models/song.dart';
+import '../theme/app_colors.dart';
 import '../widgets/song_card.dart';
-import 'results.dart';
+import 'song_detail.dart';
 
 class Search extends StatefulWidget {
   const Search({super.key});
@@ -21,7 +23,6 @@ class _SearchState extends State<Search> {
       _isLoading = true;
       _hasSearched = false;
     });
-    // Simulate a search delay (will be replaced with Spotify API call)
     Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) {
         setState(() {
@@ -46,8 +47,8 @@ class _SearchState extends State<Search> {
             child: _isLoading
                 ? _buildLoading()
                 : _hasSearched
-                ? _buildResults(context)
-                : _buildEmptyState(),
+                    ? _buildResults(context)
+                    : _buildEmptyState(),
           ),
         ],
       ),
@@ -56,27 +57,27 @@ class _SearchState extends State<Search> {
 
   Widget _buildHeader() {
     return const Padding(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 4),
+      padding: EdgeInsets.fromLTRB(16, 14, 16, 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'SEARCH',
             style: TextStyle(
-              color: Color(0xFF00F5C4),
-              fontSize: 11,
+              color: AppColors.accent,
+              fontSize: 10,
               fontWeight: FontWeight.w800,
-              letterSpacing: 3,
+              letterSpacing: 2.2,
             ),
           ),
           SizedBox(height: 4),
           Text(
-            'Find Similar Songs',
+            'Find similar songs',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
+              color: AppColors.textPrimary,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+              letterSpacing: -0.3,
             ),
           ),
         ],
@@ -86,56 +87,56 @@ class _SearchState extends State<Search> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Row(
         children: [
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF13131A),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.08),
-                ),
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
               ),
               child: TextField(
                 controller: _controller,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                 onSubmitted: (_) => _performSearch(),
                 decoration: InputDecoration(
-                  hintText: 'Song title or artist...',
+                  hintText: 'Song title or artist…',
                   hintStyle: TextStyle(
-                    color: Colors.white.withOpacity(0.3),
-                    fontSize: 14,
+                    color: AppColors.textMuted.withOpacity(0.85),
+                    fontSize: 13,
                   ),
                   prefixIcon: Icon(
                     Icons.search,
-                    color: Colors.white.withOpacity(0.3),
+                    color: AppColors.textMuted.withOpacity(0.9),
                     size: 20,
                   ),
                   border: InputBorder.none,
+                  isDense: true,
                   contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+                    horizontal: 12,
+                    vertical: 12,
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: _performSearch,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFF00F5C4),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.arrow_forward,
-                color: Color(0xFF0A0A0F),
-                size: 20,
+          const SizedBox(width: 8),
+          Material(
+            color: AppColors.accent,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: _performSearch,
+              borderRadius: BorderRadius.circular(12),
+              child: const SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(
+                  Icons.arrow_forward,
+                  color: Color(0xFF0E1114),
+                  size: 18,
+                ),
               ),
             ),
           ),
@@ -146,35 +147,61 @@ class _SearchState extends State<Search> {
 
   Widget _buildFilters() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'FILTERS',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.4),
-              fontSize: 10,
+              color: AppColors.textMuted,
+              fontSize: 9,
               fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
+              letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              _FilterDropdown(label: 'Genre', options: const [
-                'Any Genre', 'Pop', 'Hip-Hop', 'Electronic',
-                'Afrobeats', 'R&B', 'Latin', 'Rock',
-              ]),
-              const SizedBox(width: 8),
-              _FilterDropdown(label: 'Decade', options: const [
-                'Any Decade', '2020s', '2010s', '2000s', '1990s', '1980s',
-              ]),
-              const SizedBox(width: 8),
-              _FilterDropdown(label: 'Energy', options: const [
-                'Any Energy', 'High', 'Medium', 'Low',
-              ]),
-            ],
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _FilterDropdown(
+                  label: 'Genre',
+                  options: const [
+                    'Any Genre',
+                    'Pop',
+                    'Hip-Hop',
+                    'Electronic',
+                    'Afrobeats',
+                    'R&B',
+                    'Latin',
+                    'Rock',
+                  ],
+                ),
+                const SizedBox(width: 8),
+                _FilterDropdown(
+                  label: 'Decade',
+                  options: const [
+                    'Any Decade',
+                    '2020s',
+                    '2010s',
+                    '2000s',
+                    '1990s',
+                    '1980s',
+                  ],
+                ),
+                const SizedBox(width: 8),
+                _FilterDropdown(
+                  label: 'Energy',
+                  options: const [
+                    'Any Energy',
+                    'High',
+                    'Medium',
+                    'Low',
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -187,21 +214,20 @@ class _SearchState extends State<Search> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
             child: CircularProgressIndicator(
-              color: const Color(0xFF00F5C4),
+              color: AppColors.accent,
               strokeWidth: 2,
-              backgroundColor: Colors.white.withOpacity(0.1),
+              backgroundColor: AppColors.border,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
-            'Searching...',
+            'Searching…',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.4),
-              fontSize: 13,
-              letterSpacing: 0.3,
+              color: AppColors.textSecondary,
+              fontSize: 12,
             ),
           ),
         ],
@@ -214,34 +240,49 @@ class _SearchState extends State<Search> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
           child: Row(
             children: [
-              Text(
-                'Results for "${_controller.text}"',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  'Results for "${_controller.text}"',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00F5C4).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppColors.accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.accent.withOpacity(0.25)),
                 ),
                 child: Text(
                   '${SampleData.searchResults.length}',
                   style: const TextStyle(
-                    color: Color(0xFF00F5C4),
-                    fontSize: 11,
+                    color: AppColors.accent,
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
             ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(
+            'Tap a result for overview and links.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+            ),
           ),
         ),
         Expanded(
@@ -254,9 +295,7 @@ class _SearchState extends State<Search> {
                 song: song,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => Results(seedSong: song),
-                  ),
+                  MaterialPageRoute(builder: (_) => SongDetail(song: song)),
                 ),
               );
             },
@@ -272,35 +311,33 @@ class _SearchState extends State<Search> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              color: const Color(0xFF13131A),
+              color: AppColors.surface,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withOpacity(0.07),
-              ),
+              border: Border.all(color: AppColors.border),
             ),
             child: Icon(
               Icons.music_note_rounded,
-              color: Colors.white.withOpacity(0.2),
-              size: 30,
+              color: AppColors.textMuted.withOpacity(0.7),
+              size: 26,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             'Search for a song to get started',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.4),
-              fontSize: 14,
+              color: AppColors.textSecondary,
+              fontSize: 13,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
-            "We'll find you something that fits perfectly.",
+            'Spotify results will appear here once connected.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.2),
-              fontSize: 12,
+              color: AppColors.textMuted,
+              fontSize: 11,
             ),
           ),
         ],
@@ -327,92 +364,121 @@ class _FilterDropdownState extends State<_FilterDropdown> {
     final display = _selected ?? widget.label;
     final isActive = _selected != null && _selected != widget.options.first;
 
-    return GestureDetector(
-      onTap: () => _showPicker(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive
-              ? const Color(0xFF00F5C4).withOpacity(0.1)
-              : const Color(0xFF13131A),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isActive
-                ? const Color(0xFF00F5C4).withOpacity(0.4)
-                : Colors.white.withOpacity(0.08),
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: () => _showPicker(context),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isActive ? AppColors.accent.withOpacity(0.45) : AppColors.border,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              display,
-              style: TextStyle(
-                color: isActive
-                    ? const Color(0xFF00F5C4)
-                    : Colors.white.withOpacity(0.5),
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 120),
+                child: Text(
+                  display,
+                  style: TextStyle(
+                    color: isActive ? AppColors.accent : AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down,
-              size: 14,
-              color: isActive
-                  ? const Color(0xFF00F5C4)
-                  : Colors.white.withOpacity(0.3),
-            ),
-          ],
+              const SizedBox(width: 2),
+              Icon(
+                Icons.keyboard_arrow_down,
+                size: 16,
+                color: isActive ? AppColors.accent : AppColors.textMuted,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   void _showPicker(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF13131A),
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(2),
+      builder: (sheetContext) {
+        final maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.55;
+        return SafeArea(
+          child: SizedBox(
+            height: maxHeight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 10),
+                Center(
+                  child: Container(
+                    width: 32,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    widget.label,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: widget.options.length,
+                    itemBuilder: (context, index) {
+                      final opt = widget.options[index];
+                      final chosen = _selected == opt;
+                      return ListTile(
+                        dense: true,
+                        title: Text(
+                          opt,
+                          style: TextStyle(
+                            color: chosen ? AppColors.accent : AppColors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: chosen ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                        trailing: chosen
+                            ? const Icon(Icons.check, color: AppColors.accent, size: 18)
+                            : null,
+                        onTap: () {
+                          setState(() => _selected = opt);
+                          Navigator.pop(sheetContext);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          ...widget.options.map((opt) => ListTile(
-            title: Text(
-              opt,
-              style: TextStyle(
-                color: _selected == opt
-                    ? const Color(0xFF00F5C4)
-                    : Colors.white.withOpacity(0.8),
-                fontSize: 14,
-                fontWeight: _selected == opt
-                    ? FontWeight.w600
-                    : FontWeight.w400,
-              ),
-            ),
-            trailing: _selected == opt
-                ? const Icon(Icons.check, color: Color(0xFF00F5C4), size: 18)
-                : null,
-            onTap: () {
-              setState(() => _selected = opt);
-              Navigator.pop(context);
-            },
-          )),
-          const SizedBox(height: 12),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -423,9 +489,9 @@ class _Divider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 0.5,
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      color: Colors.white.withOpacity(0.07),
+      height: 1,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      color: AppColors.border,
     );
   }
 }

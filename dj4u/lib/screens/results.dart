@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../models/song.dart';
-import '../widgets/song_card.dart';
+import '../theme/app_colors.dart';
+import 'song_detail.dart';
 
 class Results extends StatelessWidget {
   final Song seedSong;
@@ -10,16 +13,17 @@ class Results extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
           _buildAppBar(context),
           _buildSeedCard(),
+          _buildSeedActions(context),
           _buildAttributes(),
           _buildFilters(),
           _buildResultsHeader(),
           _buildResultsList(context),
-          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),
     );
@@ -27,7 +31,7 @@ class Results extends StatelessWidget {
 
   Widget _buildAppBar(BuildContext context) {
     return SliverAppBar(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: AppColors.background,
       elevation: 0,
       pinned: true,
       leading: GestureDetector(
@@ -35,22 +39,22 @@ class Results extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFF13131A),
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
+            border: Border.all(color: AppColors.border),
           ),
           child: Icon(
             Icons.arrow_back,
-            color: Colors.white.withOpacity(0.8),
+            color: AppColors.textSecondary,
             size: 18,
           ),
         ),
       ),
       title: const Text(
-        'Similar Songs',
+        'Similar songs',
         style: TextStyle(
-          color: Colors.white,
-          fontSize: 16,
+          color: AppColors.textPrimary,
+          fontSize: 15,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -62,26 +66,20 @@ class Results extends StatelessWidget {
     return SliverToBoxAdapter(
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1A2A1A), Color(0xFF0A1520)],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFF00F5C4).withOpacity(0.2),
-          ),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               child: Container(
                 width: 64,
                 height: 64,
-                color: const Color(0xFF1E1E2E),
+                color: AppColors.surfaceElevated,
                 child: Image.network(
                   seedSong.albumArtUrl,
                   width: 64,
@@ -89,55 +87,85 @@ class Results extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Icon(
                     Icons.music_note,
-                    color: Colors.white.withOpacity(0.2),
-                    size: 28,
+                    color: AppColors.textMuted.withOpacity(0.5),
+                    size: 26,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF00F5C4).withOpacity(0.12),
+                      color: AppColors.accent.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
                       'SEED TRACK',
                       style: TextStyle(
-                        color: Color(0xFF00F5C4),
-                        fontSize: 9,
+                        color: AppColors.accent,
+                        fontSize: 8,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 1.5,
+                        letterSpacing: 1.2,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 5),
                   Text(
                     seedSong.title,
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     seedSong.artist,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 13,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeedActions(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: _ActionChip(
+                icon: Icons.info_outline_rounded,
+                label: 'Details',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => SongDetail(song: seedSong)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _ActionChip(
+                icon: Icons.open_in_new_rounded,
+                label: 'Spotify',
+                onTap: () => _launch(context, seedSong.spotifyUrl),
               ),
             ),
           ],
@@ -149,32 +177,39 @@ class Results extends StatelessWidget {
   Widget _buildAttributes() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _AttributeCard(
-              icon: Icons.speed_rounded,
-              label: 'TEMPO',
-              value: '${seedSong.bpm.toInt()}',
-              unit: 'BPM',
-              color: const Color(0xFF00F5C4),
+            Expanded(
+              child: _AttributeCard(
+                icon: Icons.speed_rounded,
+                label: 'TEMPO',
+                value: '${seedSong.bpm.toInt()}',
+                unit: 'BPM',
+                color: AppColors.accent,
+              ),
             ),
-            const SizedBox(width: 10),
-            _AttributeCard(
-              icon: Icons.music_note_rounded,
-              label: 'KEY',
-              value: seedSong.key,
-              color: const Color(0xFFB68EFF),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _AttributeCard(
+                icon: Icons.music_note_rounded,
+                label: 'KEY',
+                value: seedSong.key,
+                color: AppColors.statKey,
+              ),
             ),
-            const SizedBox(width: 10),
-            _AttributeCard(
-              icon: Icons.directions_run_rounded,
-              label: 'DANCE',
-              value: '${(seedSong.danceability * 100).toInt()}',
-              unit: '%',
-              color: const Color(0xFFFF2D6B),
-              showBar: true,
-              barValue: seedSong.danceability,
+            const SizedBox(width: 8),
+            Expanded(
+              child: _AttributeCard(
+                icon: Icons.directions_run_rounded,
+                label: 'DANCE',
+                value: '${(seedSong.danceability * 100).toInt()}',
+                unit: '%',
+                color: AppColors.statDance,
+                showBar: true,
+                barValue: seedSong.danceability,
+              ),
             ),
           ],
         ),
@@ -185,29 +220,29 @@ class Results extends StatelessWidget {
   Widget _buildFilters() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'REFINE RESULTS',
+              'REFINE',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.35),
-                fontSize: 10,
+                color: AppColors.textMuted,
+                fontSize: 9,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
+                letterSpacing: 1.2,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: [
-                  _FilterChip(label: 'All', isSelected: true),
-                  _FilterChip(label: 'Same Key'),
+                children: const [
+                  _FilterChip(label: 'All'),
+                  _FilterChip(label: 'Same key'),
                   _FilterChip(label: '±5 BPM'),
-                  _FilterChip(label: 'High Energy'),
-                  _FilterChip(label: 'Same Genre'),
+                  _FilterChip(label: 'High energy'),
+                  _FilterChip(label: 'Same genre'),
                   _FilterChip(label: '2020s'),
                 ],
               ),
@@ -221,23 +256,23 @@ class Results extends StatelessWidget {
   Widget _buildResultsHeader() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
               'Recommendations',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+                color: AppColors.textPrimary,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
             ),
             Text(
               '${SampleData.searchResults.length} songs',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.35),
-                fontSize: 12,
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 11,
               ),
             ),
           ],
@@ -251,18 +286,33 @@ class Results extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
-              (context, i) {
+          (context, i) {
             final song = SampleData.searchResults[i];
-            return _ResultRow(song: song, index: i);
+            return _ResultRow(
+              song: song,
+              index: i,
+              onOpenDetails: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => SongDetail(song: song)),
+              ),
+              onOpenSpotify: () => _launch(context, song.spotifyUrl),
+            );
           },
           childCount: SampleData.searchResults.length,
         ),
       ),
     );
   }
-}
 
-// ─── Attribute Card ───────────────────────────────────────────────────────────
+  Future<void> _launch(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!context.mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not open link')),
+    );
+  }
+}
 
 class _AttributeCard extends StatelessWidget {
   final IconData icon;
@@ -285,41 +335,48 @@ class _AttributeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF13131A),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.15)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 14),
-                const SizedBox(width: 5),
-                Text(
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color.withOpacity(0.9), size: 12),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
                   label,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.4),
-                    fontSize: 9,
+                    color: AppColors.textMuted,
+                    fontSize: 8,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
+                    letterSpacing: 0.6,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            RichText(
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: RichText(
               text: TextSpan(
                 children: [
                   TextSpan(
                     text: value,
                     style: TextStyle(
                       color: color,
-                      fontSize: 22,
+                      fontSize: 18,
                       fontWeight: FontWeight.w800,
                       height: 1,
                     ),
@@ -328,111 +385,121 @@ class _AttributeCard extends StatelessWidget {
                     TextSpan(
                       text: ' $unit',
                       style: TextStyle(
-                        color: color.withOpacity(0.5),
-                        fontSize: 11,
+                        color: color.withOpacity(0.55),
+                        fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                 ],
               ),
             ),
-            if (showBar && barValue != null) ...[
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: barValue,
-                  backgroundColor: Colors.white.withOpacity(0.07),
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                  minHeight: 3,
-                ),
+          ),
+          if (showBar && barValue != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: barValue,
+                backgroundColor: AppColors.border,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                minHeight: 3,
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 }
-
-// ─── Filter Chip ──────────────────────────────────────────────────────────────
 
 class _FilterChip extends StatelessWidget {
   final String label;
-  final bool isSelected;
 
-  const _FilterChip({required this.label, this.isSelected = false});
+  const _FilterChip({required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? const Color(0xFF00F5C4).withOpacity(0.15)
-            : const Color(0xFF13131A),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isSelected
-              ? const Color(0xFF00F5C4).withOpacity(0.5)
-              : Colors.white.withOpacity(0.08),
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isSelected
-              ? const Color(0xFF00F5C4)
-              : Colors.white.withOpacity(0.5),
-          fontSize: 12,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('“$label” will filter results when Spotify is connected.'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 }
-
-// ─── Result Row ───────────────────────────────────────────────────────────────
 
 class _ResultRow extends StatelessWidget {
   final Song song;
   final int index;
+  final VoidCallback onOpenDetails;
+  final VoidCallback onOpenSpotify;
 
-  const _ResultRow({required this.song, required this.index});
+  const _ResultRow({
+    required this.song,
+    required this.index,
+    required this.onOpenDetails,
+    required this.onOpenSpotify,
+  });
 
   @override
   Widget build(BuildContext context) {
     final matchPct = 95 - (index * 7);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF13131A),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Match percentage
           SizedBox(
-            width: 38,
+            width: 34,
             child: Column(
               children: [
                 Text(
                   '$matchPct',
                   style: const TextStyle(
-                    color: Color(0xFF00F5C4),
-                    fontSize: 16,
+                    color: AppColors.accent,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 Text(
                   '%',
                   style: TextStyle(
-                    color: const Color(0xFF00F5C4).withOpacity(0.5),
-                    fontSize: 9,
+                    color: AppColors.accent.withOpacity(0.55),
+                    fontSize: 8,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -440,79 +507,100 @@ class _ResultRow extends StatelessWidget {
             ),
           ),
           Container(
-            width: 0.5,
-            height: 44,
-            margin: const EdgeInsets.symmetric(horizontal: 12),
-            color: Colors.white.withOpacity(0.07),
+            width: 1,
+            height: 48,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            color: AppColors.border,
           ),
-          // Album art
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Container(
               width: 48,
               height: 48,
-              color: const Color(0xFF1E1E2E),
+              color: AppColors.surfaceElevated,
               child: Image.network(
                 song.albumArtUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Icon(
                   Icons.music_note,
-                  color: Colors.white.withOpacity(0.2),
-                  size: 22,
+                  color: AppColors.textMuted.withOpacity(0.5),
+                  size: 20,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          // Info
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   song.title,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   song.artist,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.45),
-                    fontSize: 12,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 7),
-                Row(
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
                   children: [
                     _MiniStat(
                       label: '${song.bpm.toInt()} BPM',
-                      color: const Color(0xFF00F5C4),
+                      color: AppColors.accent,
                     ),
-                    const SizedBox(width: 6),
                     _MiniStat(
                       label: song.key,
-                      color: const Color(0xFFB68EFF),
+                      color: AppColors.statKey,
                     ),
-                    const SizedBox(width: 6),
                     _MiniStat(
-                      label: '${(song.danceability * 100).toInt()}% DANCE',
-                      color: const Color(0xFFFF2D6B),
+                      label: '${(song.danceability * 100).toInt()}% dance',
+                      color: AppColors.statDance,
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          Icon(
-            Icons.add_circle_outline,
-            color: Colors.white.withOpacity(0.2),
-            size: 20,
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                icon: Icon(
+                  Icons.info_outline,
+                  color: AppColors.textSecondary,
+                  size: 18,
+                ),
+                onPressed: onOpenDetails,
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                icon: Icon(
+                  Icons.open_in_new_rounded,
+                  color: AppColors.accent.withOpacity(0.9),
+                  size: 18,
+                ),
+                onPressed: onOpenSpotify,
+              ),
+            ],
           ),
         ],
       ),
@@ -529,18 +617,70 @@ class _MiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
         color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.18)),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: color.withOpacity(0.85),
-          fontSize: 9,
+          color: color.withOpacity(0.92),
+          fontSize: 8,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 15, color: AppColors.accent),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

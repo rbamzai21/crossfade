@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/home.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light
+      statusBarIconBrightness: Brightness.light,
     ),
   );
   runApp(const DJ4UApp());
@@ -21,19 +22,7 @@ class DJ4UApp extends StatelessWidget {
     return MaterialApp(
       title: 'DJ4U',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF050545),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFF7900),
-          secondary: Color(0xFFADA0A0),
-          surface: Color(0xFF13131A),
-          onPrimary: Color(0xFF050545),
-          onSecondary: Colors.white
-        ),
-        fontFamily: 'monospace',
-        useMaterial3: true,
-      ),
+      theme: buildAppTheme(),
       home: const Home(),
     );
   }

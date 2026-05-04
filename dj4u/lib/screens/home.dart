@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+
 import '../models/song.dart';
+import '../theme/app_colors.dart';
 import '../widgets/song_card.dart';
 import 'search.dart';
-import 'results.dart';
+import 'song_detail.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -17,12 +19,14 @@ class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050545),
+      backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _selectedTab,
-        children: const [
-          _LandingTab(),
-          Search(),
+        children: [
+          _LandingTab(
+            onSearchPressed: () => setState(() => _selectedTab = 1),
+          ),
+          const Search(),
         ],
       ),
       bottomNavigationBar: _BottomNav(
@@ -33,21 +37,80 @@ class _HomeState extends State<Home> {
   }
 }
 
-class _LandingTab extends StatelessWidget {
-  const _LandingTab();
+class _LandingTab extends StatefulWidget {
+  final VoidCallback onSearchPressed;
+
+  const _LandingTab({required this.onSearchPressed});
+
+  @override
+  State<_LandingTab> createState() => _LandingTabState();
+}
+
+class _LandingTabState extends State<_LandingTab> {
+  static const _genres = [
+    'All',
+    'Pop',
+    'Hip-Hop',
+    'Electronic',
+    'Afrobeats',
+    'R&B',
+    'Latin',
+  ];
+
+  int _selectedGenreIndex = 0;
+
+  List<Song> get _filteredPopular {
+    final label = _genres[_selectedGenreIndex];
+    if (label == 'All') return SampleData.popularSongs.toList();
+
+    return SampleData.popularSongs.where((s) => _songMatchesGenre(s, label)).toList();
+  }
+
+  bool _songMatchesGenre(Song song, String chipLabel) {
+    final g = song.genre.toLowerCase();
+    switch (chipLabel.toLowerCase()) {
+      case 'hip-hop':
+        return g.contains('hip') || g.contains('hop') || g.contains('rap');
+      case 'r&b':
+        return g.contains('r&b') || g.contains('rnb') || g.contains('soul');
+      case 'electronic':
+        return g.contains('electronic') || g.contains('edm') || g.contains('house');
+      case 'latin':
+        return g.contains('latin') || g.contains('reggaeton') || g.contains('salsa');
+      default:
+        return g == chipLabel.toLowerCase() || g.contains(chipLabel.toLowerCase());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final filtered = _filteredPopular;
+
     return CustomScrollView(
       slivers: [
         _buildHero(context),
-        _buildSectionHeader('🔥 Popular Right Now'),
+        _buildSectionHeader('Popular right now'),
         _buildHorizontalSongs(),
-        _buildSectionHeader('📈 Trending by Genre'),
+        _buildSectionHeader('Browse by genre'),
         _buildGenreChips(),
-        _buildSectionHeader('⚡ Top Picks'),
-        _buildVerticalSongs(context),
-        const SliverToBoxAdapter(child: SizedBox(height: 30)),
+        _buildSectionHeader('Top picks'),
+        if (filtered.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                'No sample tracks for "${_genres[_selectedGenreIndex]}" yet. Try another genre.',
+                style: TextStyle(
+                  color: AppColors.textSecondary.withOpacity(0.9),
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          )
+        else
+          _buildVerticalSongs(context, filtered),
+        const SliverToBoxAdapter(child: SizedBox(height: 28)),
       ],
     );
   }
@@ -55,143 +118,99 @@ class _LandingTab extends StatelessWidget {
   Widget _buildHero(BuildContext context) {
     return SliverToBoxAdapter(
       child: Container(
-        height: 220,
-        margin: const EdgeInsets.fromLTRB(16, 56, 16, 0),
+        height: 252,
+        margin: const EdgeInsets.fromLTRB(16, 52, 16, 0),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF1A0A2E), Color(0xFF0D1F2D)],
+            colors: [AppColors.surfaceElevated, AppColors.surface],
           ),
-          border: Border.all(
-            color: const Color(0xFF00F5C4).withOpacity(0.15),
-            width: 1,
-          ),
+          border: Border.all(color: AppColors.border),
         ),
         child: Stack(
+          clipBehavior: Clip.hardEdge,
           children: [
-            // Decorative glow
             Positioned(
-              right: -20,
-              top: -20,
+              right: -24,
+              top: -24,
               child: Container(
-                width: 160,
-                height: 160,
+                width: 140,
+                height: 140,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFF00F5C4).withOpacity(0.12),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: -10,
-              bottom: -10,
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFFF2D6B).withOpacity(0.10),
-                      Colors.transparent,
-                    ],
-                  ),
+                  color: AppColors.accent.withOpacity(0.06),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00F5C4).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color(0xFF00F5C4).withOpacity(0.4),
-                            width: 0.5,
-                          ),
-                        ),
-                        child: const Text(
-                          'DJ4U',
-                          style: TextStyle(
-                            color: Color(0xFF00F5C4),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2,
-                          ),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.accent.withOpacity(0.28)),
+                    ),
+                    child: Text(
+                      'DJ4U',
+                      style: TextStyle(
+                        color: AppColors.accent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.6,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Find Your\nNext Track.',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                      height: 1.15,
-                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
-                    'Song recommendations powered by\ntempo, key & danceability.',
+                    'Find your\nnext track.',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.45),
-                      fontSize: 13,
-                      height: 1.4,
+                      color: AppColors.textPrimary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      height: 1.12,
+                      letterSpacing: -0.3,
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  GestureDetector(
-                    onTap: () {
-                      // Navigate to search
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF00F5C4),
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.search,
-                            color: Color(0xFF0A0A0F),
-                            size: 16,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Search a Song',
-                            style: TextStyle(
-                              color: Color(0xFF0A0A0F),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.3,
+                  const SizedBox(height: 6),
+                  Text(
+                    'Recommendations by tempo, key, and danceability.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Material(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(22),
+                    child: InkWell(
+                      onTap: widget.onSearchPressed,
+                      borderRadius: BorderRadius.circular(22),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.search, color: AppColors.background, size: 15),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Search a song',
+                              style: TextStyle(
+                                color: AppColors.background,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -207,14 +226,14 @@ class _LandingTab extends StatelessWidget {
   Widget _buildSectionHeader(String title) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 28, 16, 14),
+        padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
         child: Text(
           title,
           style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
+            color: AppColors.textPrimary,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
+            letterSpacing: 0.15,
           ),
         ),
       ),
@@ -224,7 +243,7 @@ class _LandingTab extends StatelessWidget {
   Widget _buildHorizontalSongs() {
     return SliverToBoxAdapter(
       child: SizedBox(
-        height: 220,
+        height: 224,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -234,7 +253,7 @@ class _LandingTab extends StatelessWidget {
             return SongCard(
               song: song,
               isCompact: true,
-              onTap: () => _openResults(context, song),
+              onTap: () => _openDetail(context, song),
             );
           },
         ),
@@ -243,39 +262,41 @@ class _LandingTab extends StatelessWidget {
   }
 
   Widget _buildGenreChips() {
-    final genres = ['All', 'Pop', 'Hip-Hop', 'Electronic', 'Afrobeats', 'R&B', 'Latin'];
     return SliverToBoxAdapter(
       child: SizedBox(
-        height: 38,
+        height: 36,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: genres.length,
+          itemCount: _genres.length,
           itemBuilder: (context, i) {
-            final isSelected = i == 0;
-            return Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF00F5C4)
-                    : const Color(0xFF13131A),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected
-                      ? const Color(0xFF00F5C4)
-                      : Colors.white.withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                genres[i],
-                style: TextStyle(
-                  color: isSelected
-                      ? const Color(0xFF0A0A0F)
-                      : Colors.white.withOpacity(0.6),
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            final selected = i == _selectedGenreIndex;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Material(
+                color: selected ? AppColors.accent : AppColors.surface,
+                borderRadius: BorderRadius.circular(18),
+                child: InkWell(
+                  onTap: () => setState(() => _selectedGenreIndex = i),
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: selected ? AppColors.accent : AppColors.border,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      _genres[i],
+                      style: TextStyle(
+                        color: selected ? AppColors.background : AppColors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             );
@@ -285,30 +306,28 @@ class _LandingTab extends StatelessWidget {
     );
   }
 
-  Widget _buildVerticalSongs(BuildContext context) {
+  Widget _buildVerticalSongs(BuildContext context, List<Song> songs) {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
-              (context, i) {
-            final song = SampleData.popularSongs[i];
+          (context, i) {
+            final song = songs[i];
             return SongCard(
               song: song,
-              onTap: () => _openResults(context, song),
+              onTap: () => _openDetail(context, song),
             );
           },
-          childCount: SampleData.popularSongs.length,
+          childCount: songs.length,
         ),
       ),
     );
   }
 
-  void _openResults(BuildContext context, Song song) {
+  void _openDetail(BuildContext context, Song song) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => Results(seedSong: song),
-      ),
+      MaterialPageRoute(builder: (_) => SongDetail(song: song)),
     );
   }
 }
@@ -322,19 +341,16 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F0F17),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
         border: Border(
-          top: BorderSide(
-            color: Colors.white.withOpacity(0.07),
-            width: 0.5,
-          ),
+          top: BorderSide(color: AppColors.border, width: 1),
         ),
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -373,31 +389,26 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
+      borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
-              color: isSelected
-                  ? const Color(0xFF00F5C4)
-                  : Colors.white.withOpacity(0.35),
-              size: 24,
+              color: isSelected ? AppColors.accent : AppColors.textMuted,
+              size: 22,
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                color: isSelected
-                    ? const Color(0xFF00F5C4)
-                    : Colors.white.withOpacity(0.35),
+                color: isSelected ? AppColors.accent : AppColors.textMuted,
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                letterSpacing: 0.3,
               ),
             ),
           ],
