@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'dart:async';
+import 'dart:math' as math;
 
 import '../models/song.dart';
 import '../theme/app_colors.dart';
@@ -58,6 +61,22 @@ class _LandingTabState extends State<_LandingTab> {
   ];
 
   int _selectedGenreIndex = 0;
+  StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
+  double _smoothedMotion = 0;
+  String _motionLabel = 'Hold still to calibrate';
+  String _motionHint = 'We will adapt recommendations from your movement.';
+
+  @override
+  void initState() {
+    super.initState();
+    _startMotionTracking();
+  }
+
+  @override
+  void dispose() {
+    _accelerometerSubscription?.cancel();
+    super.dispose();
+  }
 
   List<Song> get _filteredPopular {
     final label = _genres[_selectedGenreIndex];
@@ -82,6 +101,52 @@ class _LandingTabState extends State<_LandingTab> {
     }
   }
 
+  List<Song> get _motionBasedSongs {
+    if (_smoothedMotion > 2.2) {
+      return [...SampleData.popularSongs]..sort(
+        (a, b) => b.energy.compareTo(a.energy),
+      );
+    }
+    if (_smoothedMotion > 1.1) {
+      return [...SampleData.popularSongs]..sort(
+        (a, b) => b.danceability.compareTo(a.danceability),
+      );
+    }
+    return [...SampleData.popularSongs]..sort(
+      (a, b) => a.energy.compareTo(b.energy),
+    );
+  }
+
+  void _startMotionTracking() {
+    _accelerometerSubscription = accelerometerEventStream().listen((event) {
+      final magnitude = math.sqrt(
+        (event.x * event.x) + (event.y * event.y) + (event.z * event.z),
+      );
+      final dynamicMotion = (magnitude - 9.81).abs();
+      final next = (_smoothedMotion * 0.2) + (dynamicMotion * 0.8);
+
+      String label;
+      String hint;
+      if (next > 2.2) {
+        label = 'Hype mode';
+        hint = 'You are moving a lot. Queueing high-energy tracks.';
+      } else if (next > 1.1) {
+        label = 'Groove mode';
+        hint = 'Steady movement detected. Keeping it danceable.';
+      } else {
+        label = 'Chill mode';
+        hint = 'Low movement. Serving smoother, lower-energy picks.';
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _smoothedMotion = next;
+        _motionLabel = label;
+        _motionHint = hint;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredPopular;
@@ -89,6 +154,8 @@ class _LandingTabState extends State<_LandingTab> {
     return CustomScrollView(
       slivers: [
         _buildHero(context),
+        _buildSectionHeader('Motion mix'),
+        _buildMotionMix(context),
         _buildSectionHeader('Popular right now'),
         _buildHorizontalSongs(),
         _buildSectionHeader('Browse by genre'),
@@ -256,6 +323,90 @@ class _LandingTabState extends State<_LandingTab> {
               onTap: () => _openDetail(context, song),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMotionMix(BuildContext context) {
+    final picks = _motionBasedSongs.take(3).toList();
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.motion_photos_on, color: AppColors.accent, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  _motionLabel,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _motionHint,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...picks.map(
+              (song) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                visualDensity: const VisualDensity(vertical: -3),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    song.albumArtUrl,
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                title: Text(
+                  song.title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  '${song.artist} • ${song.genre}',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
+                trailing: Text(
+                  'E ${(song.energy * 100).round()}',
+                  style: TextStyle(
+                    color: AppColors.accent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                onTap: () => _openDetail(context, song),
+              ),
+            ),
+          ],
         ),
       ),
     );
