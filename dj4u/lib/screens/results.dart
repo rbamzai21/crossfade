@@ -2,13 +2,89 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/song.dart';
+import '../services/spotify_service.dart';
 import '../theme/app_colors.dart';
 import 'song_detail.dart';
 
-class Results extends StatelessWidget {
+class Results extends StatefulWidget {
   final Song seedSong;
 
   const Results({super.key, required this.seedSong});
+
+  @override
+  State<Results> createState() => _ResultsState();
+}
+
+class _ResultsState extends State<Results> {
+  List<Song> _recommendations = [];
+  bool _loading = true;
+  String? _error;
+  String _refine = 'All';
+
+  Song get _seed => widget.seedSong;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecommendations();
+  }
+
+  Future<void> _loadRecommendations() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final list = await SpotifyService.instance.getRecommendations(
+        seedTrackId: _seed.id,
+        limit: 40,
+      );
+      if (!mounted) return;
+      setState(() {
+        _recommendations = list;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  List<Song> get _filteredRecommendations {
+    switch (_refine) {
+      case 'All':
+        return List<Song>.from(_recommendations);
+      case 'Same key':
+        return _recommendations.where((s) => s.key == _seed.key).toList();
+      case '±5 BPM':
+        return _recommendations
+            .where((s) => (s.bpm - _seed.bpm).abs() <= 5)
+            .toList();
+      case 'High energy':
+        return _recommendations.where((s) => s.energy >= 0.66).toList();
+      case 'Same genre':
+        return _recommendations.where(_matchesSeedGenre).toList();
+      case '2020s':
+        return _recommendations
+            .where((s) => s.year >= 2020 && s.year < 2030)
+            .toList();
+      default:
+        return List<Song>.from(_recommendations);
+    }
+  }
+
+  bool _matchesSeedGenre(Song s) {
+    if (_seed.genre == 'Unknown' || _seed.genre.isEmpty) return true;
+    final target = s.genre.toLowerCase();
+    for (final fragment in _seed.genre.toLowerCase().split(',')) {
+      final t = fragment.trim();
+      if (t.isNotEmpty && target.contains(t)) return true;
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,10 +97,52 @@ class Results extends StatelessWidget {
           _buildSeedActions(context),
           _buildAttributes(),
           _buildFilters(),
-          _buildResultsHeader(),
-          _buildResultsList(context),
+          if (!_loading && _error == null) _buildResultsHeader(),
+          if (_loading) _buildLoadingSliver(),
+          if (!_loading && _error != null) _buildErrorSliver(),
+          if (!_loading && _error == null) _buildResultsList(context),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingSliver() {
+    return const SliverFillRemaining(
+      hasScrollBody: false,
+      child: Center(
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: CircularProgressIndicator(
+            color: AppColors.accent,
+            strokeWidth: 2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorSliver() {
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _error ?? 'Error',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: _loadRecommendations,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -81,7 +199,7 @@ class Results extends StatelessWidget {
                 height: 64,
                 color: AppColors.surfaceElevated,
                 child: Image.network(
-                  seedSong.albumArtUrl,
+                  _seed.albumArtUrl,
                   width: 64,
                   height: 64,
                   fit: BoxFit.cover,
@@ -117,7 +235,7 @@ class Results extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    seedSong.title,
+                    _seed.title,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 15,
@@ -127,7 +245,7 @@ class Results extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    seedSong.artist,
+                    _seed.artist,
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
@@ -156,7 +274,7 @@ class Results extends StatelessWidget {
                 label: 'Details',
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => SongDetail(song: seedSong)),
+                  MaterialPageRoute(builder: (_) => SongDetail(song: _seed)),
                 ),
               ),
             ),
@@ -165,7 +283,7 @@ class Results extends StatelessWidget {
               child: _ActionChip(
                 icon: Icons.open_in_new_rounded,
                 label: 'Spotify',
-                onTap: () => _launch(context, seedSong.spotifyUrl),
+                onTap: () => _launch(context, _seed.spotifyUrl),
               ),
             ),
           ],
@@ -185,7 +303,7 @@ class Results extends StatelessWidget {
               child: _AttributeCard(
                 icon: Icons.speed_rounded,
                 label: 'TEMPO',
-                value: '${seedSong.bpm.toInt()}',
+                value: '${_seed.bpm.toInt()}',
                 unit: 'BPM',
                 color: AppColors.accent,
               ),
@@ -195,7 +313,7 @@ class Results extends StatelessWidget {
               child: _AttributeCard(
                 icon: Icons.music_note_rounded,
                 label: 'KEY',
-                value: seedSong.key,
+                value: _seed.key,
                 color: AppColors.statKey,
               ),
             ),
@@ -204,11 +322,11 @@ class Results extends StatelessWidget {
               child: _AttributeCard(
                 icon: Icons.directions_run_rounded,
                 label: 'DANCE',
-                value: '${(seedSong.danceability * 100).toInt()}',
+                value: '${(_seed.danceability * 100).toInt()}',
                 unit: '%',
                 color: AppColors.statDance,
                 showBar: true,
-                barValue: seedSong.danceability,
+                barValue: _seed.danceability,
               ),
             ),
           ],
@@ -237,13 +355,37 @@ class Results extends StatelessWidget {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: const [
-                  _FilterChip(label: 'All'),
-                  _FilterChip(label: 'Same key'),
-                  _FilterChip(label: '±5 BPM'),
-                  _FilterChip(label: 'High energy'),
-                  _FilterChip(label: 'Same genre'),
-                  _FilterChip(label: '2020s'),
+                children: [
+                  _FilterChip(
+                    label: 'All',
+                    selected: _refine == 'All',
+                    onTap: () => setState(() => _refine = 'All'),
+                  ),
+                  _FilterChip(
+                    label: 'Same key',
+                    selected: _refine == 'Same key',
+                    onTap: () => setState(() => _refine = 'Same key'),
+                  ),
+                  _FilterChip(
+                    label: '±5 BPM',
+                    selected: _refine == '±5 BPM',
+                    onTap: () => setState(() => _refine = '±5 BPM'),
+                  ),
+                  _FilterChip(
+                    label: 'High energy',
+                    selected: _refine == 'High energy',
+                    onTap: () => setState(() => _refine = 'High energy'),
+                  ),
+                  _FilterChip(
+                    label: 'Same genre',
+                    selected: _refine == 'Same genre',
+                    onTap: () => setState(() => _refine = 'Same genre'),
+                  ),
+                  _FilterChip(
+                    label: '2020s',
+                    selected: _refine == '2020s',
+                    onTap: () => setState(() => _refine = '2020s'),
+                  ),
                 ],
               ),
             ),
@@ -269,7 +411,7 @@ class Results extends StatelessWidget {
               ),
             ),
             Text(
-              '${SampleData.searchResults.length} songs',
+              '${_filteredRecommendations.length} songs',
               style: const TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 11,
@@ -282,12 +424,27 @@ class Results extends StatelessWidget {
   }
 
   Widget _buildResultsList(BuildContext context) {
+    final songs = _filteredRecommendations;
+    if (songs.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          child: Text(
+            _recommendations.isEmpty
+                ? 'No recommendations returned for this track.'
+                : 'No tracks match this refine filter.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+        ),
+      );
+    }
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, i) {
-            final song = SampleData.searchResults[i];
+            final song = songs[i];
             return _ResultRow(
               song: song,
               index: i,
@@ -298,7 +455,7 @@ class Results extends StatelessWidget {
               onOpenSpotify: () => _launch(context, song.spotifyUrl),
             );
           },
-          childCount: SampleData.searchResults.length,
+          childCount: songs.length,
         ),
       ),
     );
@@ -414,38 +571,39 @@ class _AttributeCard extends StatelessWidget {
 
 class _FilterChip extends StatelessWidget {
   final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
-  const _FilterChip({required this.label});
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: Material(
-        color: AppColors.surface,
+        color: selected ? AppColors.accent.withOpacity(0.14) : AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('“$label” will filter results when Spotify is connected.'),
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          },
+          onTap: onTap,
           borderRadius: BorderRadius.circular(18),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(
+                color: selected ? AppColors.accent : AppColors.border,
+              ),
             ),
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
+              style: TextStyle(
+                color: selected ? AppColors.accent : AppColors.textSecondary,
                 fontSize: 11,
-                fontWeight: FontWeight.w500,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ),

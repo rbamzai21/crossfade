@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../models/song.dart';
+import '../services/spotify_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/genre_filters.dart';
 import '../widgets/song_card.dart';
-import 'song_detail.dart';
+import 'results.dart';
 
 class Search extends StatefulWidget {
   const Search({super.key});
@@ -14,23 +16,129 @@ class Search extends StatefulWidget {
 
 class _SearchState extends State<Search> {
   final _controller = TextEditingController();
+
   bool _hasSearched = false;
   bool _isLoading = false;
+  String? _errorMessage;
 
-  void _performSearch() {
-    if (_controller.text.trim().isEmpty) return;
+  List<Song> _rawResults = [];
+
+  static const _genreOptions = [
+    'Any Genre',
+    'Pop',
+    'Hip-Hop',
+    'Electronic',
+    'Afrobeats',
+    'R&B',
+    'Latin',
+    'Rock',
+  ];
+
+  static const _decadeOptions = [
+    'Any Decade',
+    '2020s',
+    '2010s',
+    '2000s',
+    '1990s',
+    '1980s',
+  ];
+
+  static const _energyOptions = [
+    'Any Energy',
+    'High',
+    'Medium',
+    'Low',
+  ];
+
+  String _genreSelection = _genreOptions.first;
+  String _decadeSelection = _decadeOptions.first;
+  String _energySelection = _energyOptions.first;
+
+  List<Song> get _visibleResults => _applyFilters(_rawResults);
+
+  List<Song> _applyFilters(List<Song> songs) {
+    var list = List<Song>.from(songs);
+
+    if (_genreSelection != 'Any Genre') {
+      list =
+          list.where((s) => songMatchesGenreChip(s, _genreSelection)).toList();
+    }
+
+    final decade = _decadeRange(_decadeSelection);
+    if (decade != null) {
+      list = list
+          .where((s) => s.year >= decade.$1 && s.year < decade.$2)
+          .toList();
+    }
+
+    if (_energySelection != 'Any Energy') {
+      list = list.where((s) {
+        switch (_energySelection) {
+          case 'High':
+            return s.energy >= 0.66;
+          case 'Medium':
+            return s.energy >= 0.33 && s.energy < 0.66;
+          case 'Low':
+            return s.energy < 0.33;
+          default:
+            return true;
+        }
+      }).toList();
+    }
+
+    return list;
+  }
+
+  (int, int)? _decadeRange(String label) {
+    switch (label) {
+      case '2020s':
+        return (2020, 2030);
+      case '2010s':
+        return (2010, 2020);
+      case '2000s':
+        return (2000, 2010);
+      case '1990s':
+        return (1990, 2000);
+      case '1980s':
+        return (1980, 1990);
+      default:
+        return null;
+    }
+  }
+
+  Future<void> _performSearch() async {
+    final q = _controller.text.trim();
+    if (q.isEmpty) return;
+
     setState(() {
       _isLoading = true;
       _hasSearched = false;
+      _errorMessage = null;
     });
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _hasSearched = true;
-        });
-      }
-    });
+
+    try {
+      final tracks = await SpotifyService.instance.searchTracks(q, limit: 30);
+      if (!mounted) return;
+      setState(() {
+        _rawResults = tracks;
+        _isLoading = false;
+        _hasSearched = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _rawResults = [];
+        _isLoading = false;
+        _hasSearched = true;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -47,12 +155,19 @@ class _SearchState extends State<Search> {
             child: _isLoading
                 ? _buildLoading()
                 : _hasSearched
-                    ? _buildResults(context)
+                    ? _buildResultsArea(context)
                     : _buildEmptyState(),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildResultsArea(BuildContext context) {
+    if (_errorMessage != null) {
+      return _buildError(_errorMessage!);
+    }
+    return _buildResults(context);
   }
 
   Widget _buildHeader() {
@@ -167,38 +282,23 @@ class _SearchState extends State<Search> {
               children: [
                 _FilterDropdown(
                   label: 'Genre',
-                  options: const [
-                    'Any Genre',
-                    'Pop',
-                    'Hip-Hop',
-                    'Electronic',
-                    'Afrobeats',
-                    'R&B',
-                    'Latin',
-                    'Rock',
-                  ],
+                  options: _genreOptions,
+                  value: _genreSelection,
+                  onChanged: (v) => setState(() => _genreSelection = v),
                 ),
                 const SizedBox(width: 8),
                 _FilterDropdown(
                   label: 'Decade',
-                  options: const [
-                    'Any Decade',
-                    '2020s',
-                    '2010s',
-                    '2000s',
-                    '1990s',
-                    '1980s',
-                  ],
+                  options: _decadeOptions,
+                  value: _decadeSelection,
+                  onChanged: (v) => setState(() => _decadeSelection = v),
                 ),
                 const SizedBox(width: 8),
                 _FilterDropdown(
                   label: 'Energy',
-                  options: const [
-                    'Any Energy',
-                    'High',
-                    'Medium',
-                    'Low',
-                  ],
+                  options: _energyOptions,
+                  value: _energySelection,
+                  onChanged: (v) => setState(() => _energySelection = v),
                 ),
               ],
             ),
@@ -235,7 +335,38 @@ class _SearchState extends State<Search> {
     );
   }
 
+  Widget _buildError(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, color: AppColors.accent.withOpacity(0.85), size: 36),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextButton(
+              onPressed: _performSearch,
+              child: const Text('Try again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildResults(BuildContext context) {
+    final visible = _visibleResults;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -264,7 +395,7 @@ class _SearchState extends State<Search> {
                   border: Border.all(color: AppColors.accent.withOpacity(0.25)),
                 ),
                 child: Text(
-                  '${SampleData.searchResults.length}',
+                  '${visible.length}',
                   style: const TextStyle(
                     color: AppColors.accent,
                     fontSize: 10,
@@ -278,7 +409,7 @@ class _SearchState extends State<Search> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text(
-            'Tap a result for overview and links.',
+            'Tap a track to open similar songs from Spotify.',
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 11,
@@ -286,20 +417,31 @@ class _SearchState extends State<Search> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: SampleData.searchResults.length,
-            itemBuilder: (context, i) {
-              final song = SampleData.searchResults[i];
-              return SongCard(
-                song: song,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => SongDetail(song: song)),
+          child: visible.isEmpty
+              ? Center(
+                  child: Text(
+                    _rawResults.isEmpty
+                        ? 'No tracks found.'
+                        : 'No tracks match these filters.',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: visible.length,
+                  itemBuilder: (context, i) {
+                    final song = visible[i];
+                    return SongCard(
+                      song: song,
+                      onTap: () => Navigator.push<void>(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => Results(seedSong: song),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );
@@ -334,7 +476,7 @@ class _SearchState extends State<Search> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Spotify results will appear here once connected.',
+            'Results load from Spotify.',
             style: TextStyle(
               color: AppColors.textMuted,
               fontSize: 11,
@@ -346,23 +488,23 @@ class _SearchState extends State<Search> {
   }
 }
 
-class _FilterDropdown extends StatefulWidget {
+class _FilterDropdown extends StatelessWidget {
   final String label;
   final List<String> options;
+  final String value;
+  final ValueChanged<String> onChanged;
 
-  const _FilterDropdown({required this.label, required this.options});
-
-  @override
-  State<_FilterDropdown> createState() => _FilterDropdownState();
-}
-
-class _FilterDropdownState extends State<_FilterDropdown> {
-  String? _selected;
+  const _FilterDropdown({
+    required this.label,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final display = _selected ?? widget.label;
-    final isActive = _selected != null && _selected != widget.options.first;
+    final display = value;
+    final isActive = value != options.first;
 
     return Material(
       color: AppColors.surface,
@@ -438,7 +580,7 @@ class _FilterDropdownState extends State<_FilterDropdown> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    widget.label,
+                    label,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 13,
@@ -449,10 +591,10 @@ class _FilterDropdownState extends State<_FilterDropdown> {
                 const SizedBox(height: 6),
                 Expanded(
                   child: ListView.builder(
-                    itemCount: widget.options.length,
+                    itemCount: options.length,
                     itemBuilder: (context, index) {
-                      final opt = widget.options[index];
-                      final chosen = _selected == opt;
+                      final opt = options[index];
+                      final chosen = value == opt;
                       return ListTile(
                         dense: true,
                         title: Text(
@@ -467,7 +609,7 @@ class _FilterDropdownState extends State<_FilterDropdown> {
                             ? const Icon(Icons.check, color: AppColors.accent, size: 18)
                             : null,
                         onTap: () {
-                          setState(() => _selected = opt);
+                          onChanged(opt);
                           Navigator.pop(sheetContext);
                         },
                       );
