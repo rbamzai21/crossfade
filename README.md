@@ -16,11 +16,6 @@ Most music apps recommend songs based on listening history. Crossfade is built f
 - **Song Detail View** — see tempo, key, danceability, energy, genre, and release year for any track at a glance
 - **Filters** — narrow results by genre, decade, and energy level
 - **In-app Preview** — play a short audio clip directly in the app, or open the track in Spotify
-## Screenshots
- 
-| Home | Search | Results | Song Detail |
-|------|--------|---------|-------------|
-| ![Home](screenshots/home.png) | ![Search](screenshots/search.png) | ![Results](screenshots/results.png) | ![Detail](screenshots/detail.png) |
  
 ## Tech Stack
  
